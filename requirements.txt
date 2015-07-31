@@ -1,0 +1,5 @@
+lxml>=3.4.4,<3.5
+morph-planningalerts>=1.0.0,<1.1
+peewee>=2.6.3,<2.7
+selenium>=2.47.0,<2.5
+splinter>=0.7.2,<0.8
