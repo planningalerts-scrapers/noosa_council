@@ -10,9 +10,13 @@ from .scraperlib.local_knowledge import (
 DEFAULT_START_URL = "https://noosa-eproperty.t1cloud.com/NOOEPRPROD/P1/eTrack/eTrackApplicationSearchResults.aspx?Field=S&Period=TM&r=P1.WEBGUEST&f=$P1.ETR.SEARCH.STM"
 
 
+def get_agent(driver_name="phantomjs"):
+    return Browser(driver_name)
+
+
 def main(start_url, custom_agent=None):
     MorphDatabase.init()
-    agent = custom_agent or Browser("phantomjs")
+    agent = custom_agent or get_agent()
 
     count_new = total = 0
 
@@ -34,7 +38,9 @@ def main(start_url, custom_agent=None):
 
 
 if __name__ == "__main__":
-    main(
-        start_url=os.environ.get('MORPH_START_URL', DEFAULT_START_URL)
-    )
+    with get_agent() as browser:
+        main(
+            start_url=os.environ.get('MORPH_START_URL', DEFAULT_START_URL),
+            agent=browser
+        )
 

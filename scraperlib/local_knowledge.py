@@ -6,6 +6,9 @@ def get_application_links(browser, page_url):
         Each of these links should be yielded back to the caller, or
         all returned at once in an iterable result (eg. list).
     """
+    browser.visit(page_url)
+    pages = get_pagination_links(browser)
+
     raise NotImplementedError()
 
 
@@ -17,3 +20,7 @@ def extract_application_details(browser, application_url):
         expected by a morph_planningalerts.DevelopmentApplication record.
     """
     raise NotImplementedError()
+
+
+def get_pagination_links(browser):
+    return []
