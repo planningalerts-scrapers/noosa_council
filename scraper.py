@@ -37,18 +37,24 @@ def main(start_url, custom_agent=None):
     # Run in a with block. Ensures browser.quit()
     with agent as browser:
         for application_url in get_application_links(browser, start_url):
-            print(application_url)
+
+            if not application_url:
+                # Skipped entry...
+                total += 1
+                continue
+
             da_info = extract_application_details(browser, application_url)
 
-            application, created = DevelopmentApplication.create_or_get(
+            application, created = DevelopmentApplication.get_or_create(
                 **da_info
             )
 
             total += 1
 
             if not created:
-                print("Skipping {0.council_reference}".format(application))
+                print("* Skipping {0.council_reference}".format(application))
             else:
+                print("Saved {0.council_reference}".format(application))
                 count_new += 1
 
     print("Added {0} records out of {1} processed.".format(count_new, total))
