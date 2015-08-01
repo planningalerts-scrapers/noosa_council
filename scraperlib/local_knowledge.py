@@ -8,8 +8,25 @@ def get_application_links(browser, page_url):
     """
     browser.visit(page_url)
     pages = get_pagination_links(browser)
+    finished = False
 
-    raise NotImplementedError()
+    while not finished:
+        link_table_id = "ctl00_Content_cusResultsGrid_repWebGrid_ctl00_grdWebGridTabularView"
+        links = browser.find_by_xpath(
+            "id('{}')//tr[@class!='headerRow' and @class!='pagerRow']/td[1]/a".format(
+                link_table_id
+            )
+        )
+
+        for link in links:
+            yield link['href']
+
+        if pages:
+            next_page = pages.pop(0)
+            page_link = browser.find_link_by_href(next_page)
+            page_link.click()
+        else:
+            finished = True
 
 
 def extract_application_details(browser, application_url):
@@ -23,4 +40,5 @@ def extract_application_details(browser, application_url):
 
 
 def get_pagination_links(browser):
-    return []
+    page_links = browser.find_by_xpath(".//tr[@class='pagerRow']//a")
+    return [link["href"] for link in page_links]
