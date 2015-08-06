@@ -1,5 +1,4 @@
 lxml==3.4.4
 morph-planningalerts==1.0.0
-peewee==2.6.3
-selenium==2.47.0
-splinter==0.7.2
+requests==2.7.0
+

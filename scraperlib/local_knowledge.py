@@ -1,22 +1,26 @@
+import requests
+import lxml.html
 from collections import OrderedDict
 from datetime import datetime
 from morph_planningalerts import DevelopmentApplication
+from util import AspJsLink
+from urllib import quote
 
 # NOTE: There doesn't seem to be a direct email address for application enquiries.
-#   Closest thing they have is this form, which will unfortunately need the user
-#   to hunt for the property they want to comment on... :(
-ENQUIRY_URL = "https://noosa-eproperty.t1cloud.com/NOOEPRPROD/P1/eRequest/SubmitRequest.aspx?r=P1.WEBGUEST&f=%24P1.ECR.SUBMIT.MNT&Group=DevelopReq&GroupCategory=RMDevEnqui"
+#   So, we'll just use their main "general" email.
+ENQUIRE_EMAIL = "mailto:mail@noosa.qld.gov.au"
 
 
-def get_application_links(browser, page_url):
+def get_application_links(page_url):
     """ This routine hunts down all the development application links,
         within the given page.
 
         Each of these links should be yielded back to the caller, or
         all returned at once in an iterable result (eg. list).
     """
-    browser.visit(page_url)
-    pages = get_pagination_links(browser)
+    response = requests.get(page_url)
+    content = lxml.html.fromstring(response.text)
+    pages = get_pagination_links(page_url, content)
     finished = False
 
     applications = OrderedDict()
@@ -25,12 +29,9 @@ def get_application_links(browser, page_url):
     #   since we don't get to backtrack to a specific pagenation
     #   once we visit the detail page. The lists all share the same
     #   url, with page selection controlled by javascript form submits. :P
-    while not finished:
-        link_table_id = "ctl00_Content_cusResultsGrid_repWebGrid_ctl00_grdWebGridTabularView"
-        links = browser.find_by_xpath(
-            "id('{}')//tr[@class!='headerRow' and @class!='pagerRow']/td[1]/a".format(
-                link_table_id
-            )
+    while len(content) and not finished:
+        links = content.xpath(
+            "//tr[@class!='headerRow' and @class!='pagerRow']/td[1]/a"
         )
 
         for link in links:
@@ -43,9 +44,10 @@ def get_application_links(browser, page_url):
             applications[link.text] = target_url
 
         if pages:
-            next_page = pages.pop(0)
-            page_link = browser.find_link_by_href(next_page)
-            page_link.click()
+            # Fetch the next page of application links
+            next_page_link = pages.pop(0)
+            response = next_page_link.click()
+            content = lxml.html.fromstring(response)
         else:
             finished = True
 
@@ -63,14 +65,16 @@ def get_application_links(browser, page_url):
     return applications.values()
 
 
-def extract_application_details(browser, application_url):
+def extract_application_details(application_url):
     """ Find all relevant development application information,
         from the details url we're given.
 
         The result should be one dictionary having the fields
         expected by a morph_planningalerts.DevelopmentApplication record.
     """
-    browser.visit(application_url)
+    response = requests.get(application_url)
+    response.raise_for_status()
+    content = lxml.html.fromstring(response.text)
 
     display_map = {
         u'Application Number': 'council_reference',
@@ -79,63 +83,70 @@ def extract_application_details(browser, application_url):
         u'Submitted Date': ('date_received', lambda d: datetime.strptime(d, '%d/%m/%Y').date()),
     }
 
-    try:
-        display_names = [
-            element.text
-            for element in browser.find_by_xpath(
-                ".//tr[@class='normalRow' or @class='alternateRow']/td[1]"
-            )
-        ]
-        field_values = [
-            element.text
-            for element in browser.find_by_xpath(
-                ".//tr[@class='normalRow' or @class='alternateRow']/td[2]"
-            )
-        ]
+    display_names = [
+        element.text
+        for element in content.xpath(
+            "//tr[@class='normalRow' or @class='alternateRow']/td[1]"
+        )
+    ]
+    field_values = [
+        element.text
+        for element in content.xpath(
+            "//tr[@class='normalRow' or @class='alternateRow']/td[2]"
+        )
+    ]
 
-        fields = dict(zip(display_names, field_values))
+    fields = dict(zip(display_names, field_values))
 
-        result = {}
-        for display_name, value in fields.items():
-            display_name = display_name.strip()
-            value = value.strip()
+    result = {}
+    for display_name, value in fields.items():
+        display_name = display_name.strip()
+        value = value.strip() if value else None
 
-            field_name = display_map.get(display_name)
-            if field_name:
-                if isinstance(field_name, tuple):
-                    field_name, modifier = field_name
-                    value = modifier(value)
-                if field_name == 'address' and 'address' in result:
-                    # Some of these applications have multiple
-                    # properties attached to the one application. o_O
-                    # Unsure how to handle, so just concatenating the
-                    # addresses for now, and hoping google's geolocate
-                    # sorts it out.
-                    result[field_name] += ", " + value
-                else:
-                    result[field_name] = value
+        field_name = display_map.get(display_name)
+        if field_name:
+            if isinstance(field_name, tuple):
+                field_name, modifier = field_name
+                value = modifier(value)
+            if field_name == 'address' and 'address' in result:
+                # Some of these applications have multiple
+                # properties attached to the one application. o_O
+                # Unsure how to handle, so just concatenating the
+                # addresses for now, and hoping google's geolocate
+                # sorts it out.
+                result[field_name] += ", " + value
+            else:
+                result[field_name] = value
 
-        # Sometimes there is no description...
-        # At least this way, there'll be something kind of
-        # describy.
-        if 'Application Type' in fields:
-            result['description'] = " - ".join([
-                part
-                for part in [
-                    fields['Application Type'],
-                    result.get('description')
-                ]
-                if part
-            ])
+    if not 'council_reference' in result:
+        raise ValueError("Failed to parse: " + application_url)
 
-        result['info_url'] = browser.url
-        result['comment_url'] = ENQUIRY_URL
-    finally:
-        browser.back()
+    # Sometimes there is no description...
+    # At least this way, there'll be something kind of
+    # describy.
+    if 'Application Type' in fields:
+        result['description'] = " - ".join([
+            part
+            for part in [
+                fields['Application Type'],
+                result.get('description')
+            ]
+            if part
+        ])
 
+    result['info_url'] = application_url
+    result['comment_url'] = "{0}?subject={1}".format(
+        ENQUIRE_EMAIL,
+        quote(
+            "Development Application Enquiry: " + result['council_reference']
+        )
+    )
     return result
 
 
-def get_pagination_links(browser):
-    page_links = browser.find_by_xpath(".//tr[@class='pagerRow']//a")
-    return [link["href"] for link in page_links]
+def get_pagination_links(current_url, page_tree):
+    page_links = page_tree.xpath("//tr[@class='pagerRow']//a/@href")
+    return [
+        AspJsLink(current_url, page_tree, link)
+        for link in page_links
+    ]
