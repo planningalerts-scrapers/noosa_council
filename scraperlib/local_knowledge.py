@@ -100,8 +100,15 @@ def extract_application_details(application_url):
 
     result = {}
     for display_name, value in fields.items():
-        display_name = display_name.strip()
+        display_name = display_name.strip() if display_name else None
         value = value.strip() if value else None
+
+        if not display_name:
+            # NOTE: Some fields contain links as their "name", which
+            #   means that the td[1] we hunted for earlier gives us None.
+            #   Those fields aren't the ones we're trying to scrape anyway,
+            #   so... skip.
+            continue
 
         field_name = display_map.get(display_name)
         if field_name:
