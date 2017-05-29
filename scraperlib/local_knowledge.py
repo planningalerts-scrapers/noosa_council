@@ -38,7 +38,7 @@ def get_application_links(page_url):
             # Screw the href we're given here. It's a javascript
             # postback. Instead, we'll use the target url that the
             # normal form submit + redirect would send us to.
-            target_url = "https://noosa-eproperty.t1cloud.com/NOOEPRPROD/P1/eTrack/eTrackApplicationDetails.aspx?r=P1.WEBGUEST&f=$P1.ETR.APPDET.VIW&ApplicationId={}".format(
+            target_url = "https://noo-web.t1cloud.com/T1PRDefault/WebApps/eProperty/P1/eTrack/eTrackApplicationDetails.aspx?r=P1.WEBGUEST&f=$P1.ETR.APPDET.VIW&ApplicationId={}".format(
                 link.text
             )
             applications[link.text] = target_url

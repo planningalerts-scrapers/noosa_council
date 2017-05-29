@@ -6,7 +6,7 @@ from scraperlib.local_knowledge import (
 )
 
 # Starting from the "Submitted this month" page
-DEFAULT_START_URL = "https://noosa-eproperty.t1cloud.com/NOOEPRPROD/P1/eTrack/eTrackApplicationSearchResults.aspx?Field=S&Period=TM&r=P1.WEBGUEST&f=$P1.ETR.SEARCH.STM"
+DEFAULT_START_URL = "https://noo-web.t1cloud.com/T1PRDefault/WebApps/eProperty/P1/eTrack/eTrackApplicationSearchResults.aspx?Field=S&Period=TM&r=P1.WEBGUEST&f=$P1.ETR.SEARCH.STM"
 
 
 def main(start_url):
