@@ -70,7 +70,7 @@ end
     }
 
     if record.has_blank?
-      puts 'Somthing is blank, skipping record ' + record['council_reference']
+      puts 'Something is blank, skipping record ' + record['council_reference']
       puts record
     else
       if (ScraperWiki.select("* from data where `council_reference`='#{record['council_reference']}'").empty? rescue true)
