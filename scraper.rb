@@ -65,7 +65,7 @@ end
 
     if (ScraperWiki.select("* from data where `council_reference`='#{record['council_reference']}'").empty? rescue true)
       puts "Saving record " + record['council_reference'] + " - " + record['address']
-      puts record
+#       puts record
       ScraperWiki.save_sqlite(['council_reference'], record)
     else
       puts 'Skipping already saved record ' + record['council_reference']
