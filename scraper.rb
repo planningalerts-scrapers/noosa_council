@@ -9,6 +9,12 @@ class Mechanize::Form
   end
 end
 
+class Hash
+  def has_blank?
+    self.values.any?{|v| v.nil? || v.length == 0}
+  end
+end
+
 case ENV['MORPH_PERIOD']
   when 'lastmonth'
   	period = "LM"
@@ -51,7 +57,7 @@ end
   results = page.search("tr.normalRow, tr.alternateRow")
   results.each do |result|
     detail_page = agent_detail_page.get( info_url + URI::encode_www_form_component(result.search("td")[0].inner_text) )
-    address =  detail_page.search('td.headerColumn[contains("Address")] ~ td')[0].inner_text
+    address = detail_page.search('td.headerColumn[contains("Address")] ~ td').inner_text
 
     record = {
       'council_reference' => result.search("td")[0].inner_text.to_s,
@@ -63,12 +69,17 @@ end
       'date_received'     => Date.parse(result.search("td")[1]).to_s
     }
 
-    if (ScraperWiki.select("* from data where `council_reference`='#{record['council_reference']}'").empty? rescue true)
-      puts "Saving record " + record['council_reference'] + " - " + record['address']
-#       puts record
-      ScraperWiki.save_sqlite(['council_reference'], record)
+    if record.has_blank?
+      puts 'Somthing is blank, skipping record ' + record['council_reference']
+      puts record
     else
-      puts 'Skipping already saved record ' + record['council_reference']
+      if (ScraperWiki.select("* from data where `council_reference`='#{record['council_reference']}'").empty? rescue true)
+        puts "Saving record " + record['council_reference'] + " - " + record['address']
+#       puts record
+        ScraperWiki.save_sqlite(['council_reference'], record)
+      else
+        puts 'Skipping already saved record ' + record['council_reference']
+      end
     end
   end
 end
