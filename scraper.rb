@@ -62,7 +62,7 @@ end
     record = {
       'council_reference' => result.search("td")[0].inner_text.to_s,
       'address'           => address,
-      'description'       => result.search("td")[2].inner_text.to_s.squeeze,
+      'description'       => result.search("td")[2].inner_text.to_s.squeeze(' '),
       'info_url'          => info_url + URI::encode_www_form_component(result.search("td")[0].inner_text),
       'comment_url'       => comment_url,
       'date_scraped'      => Date.today.to_s,
